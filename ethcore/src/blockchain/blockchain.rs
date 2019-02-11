@@ -377,12 +377,14 @@ impl BlockProvider for BlockChain {
 					.filter_map(|(number, hash, receipts)| self.block_body(&hash).map(|ref b| (number, hash, receipts, b.transaction_hashes())))
 					.flat_map(|(number, hash, mut receipts, mut hashes)| {
 						if receipts.len() != hashes.len() {
-							warn!("Block {} ({}) has different number of receipts ({}) to transactions ({}). Database corrupt?", number, hash, receipts.len(), hashes.len());
+							error!("Block {} ({}) has different number of receipts ({}) to transactions ({}). Database corrupt?", number, hash, receipts.len(), hashes.len());
 							assert!(false);
 						}
 						let mut log_index = receipts.iter().fold(0, |sum, receipt| sum + receipt.logs.len());
 
 						let receipts_len = receipts.len();
+						error!("block hash {}, receipts_len: {}", hash, receipts_len);
+
 						hashes.reverse();
 						receipts.reverse();
 						receipts.into_iter()
@@ -393,8 +395,10 @@ impl BlockProvider for BlockChain {
 								let current_log_index = log_index;
 								let no_of_logs = logs.len();
 								log_index -= no_of_logs;
-
 								logs.reverse();
+
+								error!("tx_hash {}, no_of_logs: {}", tx_hash, no_of_logs);
+
 								logs.into_iter()
 									.enumerate()
 									.map(move |(i, log)| LocalizedLogEntry {

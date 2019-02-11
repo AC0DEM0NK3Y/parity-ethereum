@@ -1909,6 +1909,8 @@ impl BlockChainClient for Client {
 	fn logs(&self, filter: Filter) -> Result<Vec<LocalizedLogEntry>, BlockId> {
 		let chain = self.chain.read();
 
+		error!(target: "client", "client logs called");
+
 		// First, check whether `filter.from_block` and `filter.to_block` is on the canon chain. If so, we can use the
 		// optimized version.
 		let is_canon = |id| {
@@ -1922,6 +1924,9 @@ impl BlockChainClient for Client {
 		};
 
 		let blocks = if is_canon(&filter.from_block) && is_canon(&filter.to_block) {
+
+			error!(target: "client", "blocks isCanon true");
+
 			// If we are on the canon chain, use bloom filter to fetch required hashes.
 			//
 			// If we are sure the block does not exist (where val > best_block_number), then return error. Note that we
@@ -1929,37 +1934,67 @@ impl BlockChainClient for Client {
 			// pending logs themselves).
 			let from = match self.block_number_ref(&filter.from_block) {
 				Some(val) if val <= chain.best_block_number() => val,
-				_ => return Err(filter.from_block.clone()),
+				_ => {
+
+					error!(target: "client", "match self.block_number_ref(&filter.from_block) failed");
+
+					return Err(filter.from_block.clone())
+				},
 			};
 			let to = match self.block_number_ref(&filter.to_block) {
 				Some(val) if val <= chain.best_block_number() => val,
-				_ => return Err(filter.to_block.clone()),
+				_ => {
+
+					error!(target: "client", "match self.block_number_ref(&filter.to_block) failed");
+
+					return Err(filter.to_block.clone())
+				},
 			};
 
 			// If from is greater than to, then the current bloom filter behavior is to just return empty
 			// result. There's no point to continue here.
 			if from > to {
+
+				error!(target: "client", "from > to failed");
+
 				return Err(filter.to_block.clone());
 			}
 
 			chain.blocks_with_bloom(&filter.bloom_possibilities(), from, to)
 				.into_iter()
-				.filter_map(|n| chain.block_hash(n))
+				.filter_map(|n| {
+					let bh = chain.block_hash(n);
+					if bh != Some(H256::from(0)) {
+						error!(target: "client", "chain.block_hash({}) OK", n);
+					} else {
+						error!(target: "client", "chain.block_hash({}) FAIL", n);
+					}
+
+					bh
+				})
 				.collect::<Vec<H256>>()
 		} else {
+
+			error!(target: "client", "blocks isCanon false");
+
 			// Otherwise, we use a slower version that finds a link between from_block and to_block.
 			let from_hash = match Self::block_hash(&chain, filter.from_block) {
 				Some(val) => val,
 				None => return Err(filter.from_block.clone()),
 			};
+			error!(target: "client", "from_hash {}", from_hash);
+
 			let from_number = match chain.block_number(&from_hash) {
 				Some(val) => val,
 				None => return Err(BlockId::Hash(from_hash)),
 			};
+			error!(target: "client", "from_number {}", from_number);
+
 			let to_hash = match Self::block_hash(&chain, filter.to_block) {
 				Some(val) => val,
 				None => return Err(filter.to_block.clone()),
 			};
+			error!(target: "client", "to_hash {}", to_hash);
 
 			let blooms = filter.bloom_possibilities();
 			let bloom_match = |header: &encoded::Header| {
@@ -1971,12 +2006,19 @@ impl BlockChainClient for Client {
 				let mut current_hash = to_hash;
 
 				loop {
+					error!(target: "client", "current_hash {}", current_hash);
 					let header = match chain.block_header_data(&current_hash) {
 						Some(val) => val,
 						None => return Err(BlockId::Hash(current_hash)),
 					};
+
 					if bloom_match(&header) {
+
+						error!(target: "client", "matching header hash {}", header.hash());
+
 						blocks.push(current_hash);
+					} else {
+						error!(target: "client", "non-matching header hash {}", header.hash());
 					}
 
 					// Stop if `from` block is reached.
@@ -1992,6 +2034,9 @@ impl BlockChainClient for Client {
 
 			// Check if we've actually reached the expected `from` block.
 			if last_hash != from_hash || blocks.is_empty() {
+
+				error!(target: "client", "error {} || {}", last_hash != from_hash, blocks.is_empty());
+
 				// In this case, from_hash is the cause (for not matching last_hash).
 				return Err(BlockId::Hash(from_hash));
 			}
