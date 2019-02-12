@@ -1962,9 +1962,9 @@ impl BlockChainClient for Client {
 				return Err(filter.to_block.clone());
 			}
 
-			let bloom_Possibilities = filter.bloom_possibilities();
-			error!(target: "client", "bloom_Possibilities len: {}", bloom_Possibilities.len());
-			chain.blocks_with_bloom(&bloom_Possibilities, from, to)
+			let bloom_possibilities = filter.bloom_possibilities();
+			error!(target: "client", "bloom_possibilities len: {}", bloom_possibilities.len());
+			chain.blocks_with_bloom(&bloom_possibilities, from, to)
 				.into_iter()
 				.filter_map(|n| {
 					let bh = chain.block_hash(n);
