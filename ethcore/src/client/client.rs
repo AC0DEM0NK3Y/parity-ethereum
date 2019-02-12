@@ -1951,6 +1951,8 @@ impl BlockChainClient for Client {
 				},
 			};
 
+			error!(target: "client", "from: {} to: {}", from, to);
+
 			// If from is greater than to, then the current bloom filter behavior is to just return empty
 			// result. There's no point to continue here.
 			if from > to {
@@ -1960,7 +1962,9 @@ impl BlockChainClient for Client {
 				return Err(filter.to_block.clone());
 			}
 
-			chain.blocks_with_bloom(&filter.bloom_possibilities(), from, to)
+			let bloom_Possibilities = filter.bloom_possibilities();
+			error!(target: "client", "bloom_Possibilities len: {}", bloom_Possibilities.len());
+			chain.blocks_with_bloom(&bloom_Possibilities, from, to)
 				.into_iter()
 				.filter_map(|n| {
 					let bh = chain.block_hash(n);

@@ -368,13 +368,25 @@ impl BlockProvider for BlockChain {
 		// sort in reverse order
 		blocks.reverse();
 
+		error!(target: "client", "fn logs<F> called");
+		error!(target: "client", "blocks len: {}", blocks.len());
+
 		let mut logs = blocks
 			.chunks(128)
 			.flat_map(move |blocks_chunk| {
 				blocks_chunk.into_par_iter()
-					.filter_map(|hash| self.block_number(&hash).map(|r| (r, hash)))
-					.filter_map(|(number, hash)| self.block_receipts(&hash).map(|r| (number, hash, r.receipts)))
-					.filter_map(|(number, hash, receipts)| self.block_body(&hash).map(|ref b| (number, hash, receipts, b.transaction_hashes())))
+					.filter_map(|hash| {
+						error!(target: "client", "filter_map(|hash|  hash: {}", hash);
+						self.block_number(&hash).map(|r| (r, hash))
+					})
+					.filter_map(|(number, hash)| {
+						error!(target: "client", "filter_map(|(number, hash)  number: {} hash: {}", number, hash);
+						self.block_receipts(&hash).map(|r| (number, hash, r.receipts))
+					})
+					.filter_map(|(number, hash, receipts)| {
+						error!(target: "client", ".filter_map(|(number, hash, receipts)  number: {} hash: {} receipts len: {}", number, hash, receipts.len());
+						self.block_body(&hash).map(|ref b| (number, hash, receipts, b.transaction_hashes()))
+					})
 					.flat_map(|(number, hash, mut receipts, mut hashes)| {
 						if receipts.len() != hashes.len() {
 							error!("Block {} ({}) has different number of receipts ({}) to transactions ({}). Database corrupt?", number, hash, receipts.len(), hashes.len());
