@@ -384,7 +384,7 @@ impl BlockProvider for BlockChain {
 						self.block_receipts(&hash).map(|r| (number, hash, r.receipts))
 					})
 					.filter_map(|(number, hash, receipts)| {
-						error!(target: "client", ".filter_map(|(number, hash, receipts)  number: {} hash: {} receipts len: {}", number, hash, receipts.len());
+						error!(target: "client", "filter_map(|(number, hash, receipts)  number: {} hash: {} receipts len: {}", number, hash, receipts.len());
 						self.block_body(&hash).map(|ref b| (number, hash, receipts, b.transaction_hashes()))
 					})
 					.flat_map(|(number, hash, mut receipts, mut hashes)| {
